@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fire and Burglary Alarm Project Map</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; }
+
+    #map { height: 100vh; width: 100%; display: none; }
+
+    #title {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      background-color: white; padding: 10px 20px; font-size: 20px; font-weight: bold;
+      z-index: 1000; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    #stats {
+      position: absolute; top: 60px; left: 20px;
+      background: white; padding: 12px; font-size: 14px;
+      border-radius: 5px; box-shadow: 0 1px 4px rgba(0,0,0,0.3); z-index: 1000;
+      line-height: 1.6; min-width: 200px;
+    }
+
+    #legend {
+      position: absolute; top: 50%; left: 20px; transform: translateY(-50%);
+      background: white; padding: 12px; font-size: 14px;
+      border-radius: 5px; box-shadow: 0 1px 4px rgba(0,0,0,0.3); z-index: 1000;
+    }
+
+    .legend-item {
+      margin-bottom: 6px; display: flex; align-items: center;
+    }
+
+    .legend-color {
+      width: 14px; height: 14px; border-radius: 50%;
+      margin-right: 8px; border: 1px solid #333;
+    }
+
+    #passcode-screen {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100vh; background: #f2f2f2;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; z-index: 2000;
+    }
+
+    #passcode-screen input {
+      padding: 10px; font-size: 18px; width: 200px; text-align: center;
+      margin-bottom: 10px;
+    }
+
+    #passcode-screen button {
+      padding: 10px 20px; font-size: 16px; cursor: pointer;
+    }
+  </style>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCE4Y_LXkC_2mjBeYTJUWnxY0op3vUaCH4"></script>
+</head>
+<body>
+
+  <div id="passcode-screen">
+    <h2>Enter Passcode</h2>
+    <input type="password" id="passcode-input" placeholder="Passcode" />
+    <button onclick="checkPasscode()">Enter</button>
+    <p id="error-message" style="color: red; display: none;">Incorrect passcode</p>
+  </div>
+
+  <div id="title">Fire and Burglary Alarm Project Map</div>
+  <div id="map"></div>
+
+  <div id="stats">
+    <strong>Completion</strong><br>
+    Fully Transferred: <span id="completion-percent">0% (0 of 0)</span><br><br>
+    FBT: <span id="count-FBT">0</span><br>
+    FT: <span id="count-FT">0</span><br>
+    BT: <span id="count-BT">0</span><br>
+    NY: <span id="count-NY">0</span><br>
+    XX: <span id="count-XX">0</span><br>
+    IP: <span id="count-IP">0</span>
+  </div>
+
+  <div id="legend">
+    <div class="legend-item"><div class="legend-color" style="background: green;"></div> Fire and Burglary Transferred</div>
+    <div class="legend-item"><div class="legend-color" style="background: orange;"></div> Fire Transferred</div>
+    <div class="legend-item"><div class="legend-color" style="background: blue;"></div> Burglary Transferred</div>
+    <div class="legend-item"><div class="legend-color" style="background: yellow;"></div> Next Year</div>
+    <div class="legend-item"><div class="legend-color" style="background: red;"></div> Canceled</div>
+    <div class="legend-item"><div class="legend-color" style="background: #c084fc;"></div> In Progress</div>
+  </div>
+
+  <script>
+    let map;
+    const counts = { FBT: 0, FT: 0, BT: 0, NY: 0, XX: 0, IP: 0 };
+    let totalSites = 0;
+    const sitesByState = {};
+
+    const stateCodeToName = {
+      "AL":"Alabama","AK":"Alaska","AZ":"Arizona","AR":"Arkansas","CA":"California","CO":"Colorado","CT":"Connecticut","DE":"Delaware",
+      "FL":"Florida","GA":"Georgia","HI":"Hawaii","ID":"Idaho","IL":"Illinois","IN":"Indiana","IA":"Iowa","KS":"Kansas","KY":"Kentucky",
+      "LA":"Louisiana","ME":"Maine","MD":"Maryland","MA":"Massachusetts","MI":"Michigan","MN":"Minnesota","MS":"Mississippi",
+      "MO":"Missouri","MT":"Montana","NE":"Nebraska","NV":"Nevada","NH":"New Hampshire","NJ":"New Jersey","NM":"New Mexico",
+      "NY":"New York","NC":"North Carolina","ND":"North Dakota","OH":"Ohio","OK":"Oklahoma","OR":"Oregon","PA":"Pennsylvania",
+      "RI":"Rhode Island","SC":"South Carolina","SD":"South Dakota","TN":"Tennessee","TX":"Texas","UT":"Utah","VT":"Vermont",
+      "VA":"Virginia","WA":"Washington","WV":"West Virginia","WI":"Wisconsin","WY":"Wyoming"
+    };
+
+    function checkPasscode() {
+      const input = document.getElementById("passcode-input").value;
+      if (input === "4350") {
+        document.getElementById("passcode-screen").style.display = "none";
+        document.getElementById("map").style.display = "block";
+        initMap();
+      } else {
+        document.getElementById("error-message").style.display = "block";
+      }
+    }
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 5,
+        center: { lat: 30.0, lng: -95.0 }
+      });
+
+      fetch("https://gist.githubusercontent.com/ian101105/74d1cc5271aaf9b94d13a7223d8b2d7a/raw/46992744d97ddbe667dca4387829d77e5bf06a27/us-states.json")
+        .then(res => res.json())
+        .then(geojson => {
+          map.data.addGeoJson(geojson);
+          map.data.setStyle({ fillOpacity: 0, strokeColor: "#444", strokeWeight: 1 });
+          loadSiteData();
+        });
+    }
+
+    function loadSiteData() {
+      fetch("https://script.google.com/macros/s/AKfycbwKUWTm5A5GO56Q-AkaAQHo7Kk4cWguGW31fs91MUMgC9-e11R9dSSCsf1Ck7dnnFQP/exec")
+        .then(res => res.json())
+        .then(rows => {
+          const validRows = rows.filter(r => parseFloat(r.LATITUDE) && parseFloat(r.LONGITUDE));
+          totalSites = validRows.length;
+
+          validRows.forEach((row, i) => {
+            const stateAbbr = row.STATE ? row.STATE.trim().toUpperCase() : "";
+            const stateName = stateCodeToName[stateAbbr] || stateAbbr;
+
+            if (!sitesByState[stateName]) sitesByState[stateName] = [];
+            sitesByState[stateName].push(row.Status);
+
+            counts[row.Status] = (counts[row.Status] || 0) + 1;
+
+            const lat = +row.LATITUDE, lng = +row.LONGITUDE;
+            if (!lat || !lng) return;
+
+            setTimeout(() => {
+              const marker = new google.maps.Marker({
+                position: { lat, lng }, map,
+                icon: {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 8,
+                  fillColor: getMarkerColor(row.Status),
+                  fillOpacity: 1,
+                  strokeWeight: 1,
+                  strokeColor: "#000"
+                }
+              });
+
+              const infoWindow = new google.maps.InfoWindow({
+                content: `<b>${row.Name}</b><br>${row.ADDRESS}, ${row.STATE} ${row.ZIP}<br>Status: <b>${row.Status}</b>`
+              });
+
+              marker.addListener("click", () => infoWindow.open(map, marker));
+            }, i * 15);
+          });
+
+          updateStats();
+          colorCompletedStates();
+        });
+    }
+
+    function colorCompletedStates() {
+      map.data.revertStyle();
+
+      const normalizedSites = {};
+      for (const state in sitesByState) {
+        normalizedSites[state.toUpperCase()] = sitesByState[state];
+      }
+
+      map.data.forEach(feature => {
+        const geoName = feature.getProperty("NAME").toUpperCase();
+        const statuses = normalizedSites[geoName];
+
+        if (!statuses) return;
+
+        if (statuses.length > 0 && statuses.every(s => s === "FBT")) {
+          map.data.overrideStyle(feature, {
+            fillColor: "#1e6e1e", // darker green
+            fillOpacity: 0.5,
+            strokeColor: "#1e6e1e"
+          });
+        }
+      });
+    }
+
+    function updateStats() {
+      for (const k in counts) {
+        const el = document.getElementById("count-" + k);
+        if (el) el.textContent = counts[k];
+      }
+      const percent = totalSites ? ((counts.FBT / totalSites) * 100).toFixed(1) : 0;
+      document.getElementById("completion-percent").textContent = `${percent}% (${counts.FBT} of ${totalSites})`;
+    }
+
+    function getMarkerColor(status) {
+      switch (status) {
+        case "FBT": return "green";
+        case "FT": return "orange";
+        case "BT": return "blue";
+        case "XX": return "red";
+        case "NY": return "yellow";
+        case "IP": return "#c084fc";
+        default: return "gray";
+      }
+    }
+  </script>
+</body>
+</html>
