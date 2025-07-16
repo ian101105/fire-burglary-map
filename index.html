@@ -55,13 +55,15 @@
 </head>
 <body>
 
+  <!-- Passcode Screen -->
   <div id="passcode-screen">
     <h2>Enter Passcode</h2>
-    <input type="password" id="passcode-input" placeholder="Passcode" />
+    <input type="text" id="passcode-input" placeholder="Passcode" autocomplete="off" />
     <button onclick="checkPasscode()">Enter</button>
     <p id="error-message" style="color: red; display: none;">Incorrect passcode</p>
   </div>
 
+  <!-- Map Content -->
   <div id="title">Fire and Burglary Alarm Project Map</div>
   <div id="map"></div>
 
