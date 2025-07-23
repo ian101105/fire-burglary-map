@@ -35,10 +35,15 @@
     }
     .legend-item {
       margin-bottom: 6px; display: flex; align-items: center;
+      cursor: pointer;
     }
     .legend-color {
       width: 14px; height: 14px; border-radius: 50%;
       margin-right: 8px; border: 1px solid #333;
+    }
+    .legend-item.selected {
+      font-weight: bold;
+      text-decoration: underline;
     }
     #passcode-screen {
       position: fixed; top: 0; left: 0;
@@ -85,22 +90,22 @@
 </div>
 
 <!-- Legend Panel -->
-<div id="legend">
-  <div class="legend-item"><div class="legend-color" style="background: green;"></div> Fire and Burglary Transferred</div>
-  <div class="legend-item"><div class="legend-color" style="background: orange;"></div> Fire Transferred</div>
-  <div class="legend-item"><div class="legend-color" style="background: blue;"></div> Burglary Transferred</div>
-  <div class="legend-item"><div class="legend-color" style="background: yellow;"></div> Next Year</div>
-  <div class="legend-item"><div class="legend-color" style="background: red;"></div> Canceled</div>
-  <div class="legend-item"><div class="legend-color" style="background: #c084fc;"></div> In Progress</div>
-</div>
+<div id="legend"></div>
 
-<!-- Map Logic -->
 <script>
 let map;
 const counts = { FBT: 0, FT: 0, BT: 0, NY: 0, XX: 0, IP: 0 };
 let totalSites = 0;
-const sitesByState = {};
 const markers = [];
+const activeFilters = new Set();
+const statuses = [
+  { code: 'FBT', color: 'green', label: 'Fire and Burglary Transferred' },
+  { code: 'FT',  color: 'orange', label: 'Fire Transferred' },
+  { code: 'BT',  color: 'blue', label: 'Burglary Transferred' },
+  { code: 'NY',  color: 'yellow', label: 'Next Year' },
+  { code: 'XX',  color: 'red', label: 'Canceled' },
+  { code: 'IP',  color: '#c084fc', label: 'In Progress' }
+];
 
 function checkPasscode() {
   const input = document.getElementById("passcode-input").value;
@@ -122,13 +127,11 @@ function smoothPanAndZoom(targetZoom, targetLatLng) {
   const currentZoom = map.getZoom();
   const zoomSteps = targetZoom - currentZoom;
   const zoomDelay = 80;
-
   for (let i = 1; i <= Math.abs(zoomSteps); i++) {
     setTimeout(() => {
       map.setZoom(currentZoom + Math.sign(zoomSteps) * i);
     }, i * zoomDelay);
   }
-
   setTimeout(() => {
     map.panTo(targetLatLng);
   }, Math.abs(zoomSteps) * zoomDelay + 100);
@@ -140,13 +143,8 @@ function initMap() {
     center: { lat: 30.0, lng: -95.0 }
   });
 
-  fetch("https://gist.githubusercontent.com/ian101105/74d1cc5271aaf9b94d13a7223d8b2d7a/raw/46992744d97ddbe667dca4387829d77e5bf06a27/us-states.json")
-    .then(res => res.json())
-    .then(geojson => {
-      map.data.addGeoJson(geojson);
-      map.data.setStyle({ fillOpacity: 0, strokeColor: "#444", strokeWeight: 1 });
-      loadSiteData();
-    });
+  renderLegend();
+  loadSiteData();
 
   document.getElementById("searchBox").addEventListener("keyup", function (e) {
     if (e.key === "Enter") {
@@ -156,7 +154,6 @@ function initMap() {
         smoothPanAndZoom(15, match.marker.getPosition());
         match.marker.setAnimation(google.maps.Animation.BOUNCE);
         setTimeout(() => match.marker.setAnimation(null), 1400);
-
         const circle = new google.maps.Circle({
           strokeColor: '#00f', strokeOpacity: 0.8, strokeWeight: 2,
           fillColor: '#00f', fillOpacity: 0.2, map,
@@ -171,36 +168,74 @@ function initMap() {
   });
 }
 
+function renderLegend() {
+  const legend = document.getElementById("legend");
+  statuses.forEach(({ code, color, label }) => {
+    const div = document.createElement("div");
+    div.className = "legend-item";
+    div.setAttribute("data-status", code);
+    div.onclick = () => toggleFilter(code, div);
+    div.innerHTML = `<div class='legend-color' style='background:${color}'></div> ${label}`;
+    legend.appendChild(div);
+  });
+}
+
+function toggleFilter(code, element) {
+  if (activeFilters.has(code)) {
+    activeFilters.delete(code);
+    element.classList.remove("selected");
+  } else {
+    activeFilters.add(code);
+    element.classList.add("selected");
+  }
+  updateMarkerVisibility();
+}
+
+function updateMarkerVisibility() {
+  const showAll = activeFilters.size === 0;
+  markers.forEach(({ marker, status }) => {
+    marker.setVisible(showAll || activeFilters.has(status));
+  });
+}
+
 function loadSiteData() {
+  fetch("https://gist.githubusercontent.com/ian101105/74d1cc5271aaf9b94d13a7223d8b2d7a/raw/46992744d97ddbe667dca4387829d77e5bf06a27/us-states.json")
+    .then(res => res.json())
+    .then(geojson => {
+      map.data.addGeoJson(geojson);
+      map.data.setStyle({ fillOpacity: 0, strokeColor: "#444", strokeWeight: 1 });
+    });
+
   fetch("https://script.google.com/macros/s/AKfycbwKUWTm5A5GO56Q-AkaAQHo7Kk4cWguGW31fs91MUMgC9-e11R9dSSCsf1Ck7dnnFQP/exec")
     .then(res => res.json())
     .then(rows => {
       const validRows = rows.filter(r => parseFloat(r.LATITUDE) && parseFloat(r.LONGITUDE));
       totalSites = validRows.length;
 
-      validRows.forEach((row, i) => {
+      validRows.forEach(row => {
         const lat = +row.LATITUDE, lng = +row.LONGITUDE;
         const centerMatch = row.Name.match(/\b\d{3}\b/);
         const centerNumber = centerMatch ? centerMatch[0] : null;
-
         if (!lat || !lng || !centerNumber) return;
 
+        const status = row.Status;
         const marker = new google.maps.Marker({
           position: { lat, lng }, map,
           icon: {
             path: google.maps.SymbolPath.CIRCLE,
-            scale: 8, fillColor: getMarkerColor(row.Status), fillOpacity: 1,
+            scale: 8, fillColor: getMarkerColor(status), fillOpacity: 1,
             strokeWeight: 1, strokeColor: "#000"
           }
         });
 
         const infoWindow = new google.maps.InfoWindow({
-          content: `<b>${row.Name}</b><br>${row.ADDRESS}, ${row.STATE} ${row.ZIP}<br>Status: <b>${row.Status}</b>`
+          content: `<b>${row.Name}</b><br>${row.ADDRESS}, ${row.STATE} ${row.ZIP}<br>Status: <b>${status}</b>`
         });
 
         marker.addListener("click", () => infoWindow.open(map, marker));
-        markers.push({ centerNumber, marker });
-        counts[row.Status] = (counts[row.Status] || 0) + 1;
+
+        markers.push({ centerNumber, marker, status });
+        counts[status] = (counts[status] || 0) + 1;
       });
 
       updateStats();
