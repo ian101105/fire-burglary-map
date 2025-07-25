@@ -92,6 +92,7 @@
 <input id="searchBox" type="text" placeholder="Search Center #" />
 <button id="resetViewBtn" onclick="resetMapView()">Reset View</button>
 <button id="produceReportBtn" onclick="produceReport()">📝 Produce Report</button>
+  <button id="downloadPDFBtn" onclick="downloadReportPDF()">📄 Export PDF</button>
 <div id="title">Fire and Burglary Alarm Project Map</div>
 <div id="map"></div>
 <div id="reportOutput"></div>
@@ -310,6 +311,24 @@ function produceReport() {
   box.innerHTML = reportHTML;
   box.style.display = "block";
 }
+const downloadReportPDF = () => {
+  const reportContent = document.getElementById("reportOutput");
+  if (!reportContent || reportContent.style.display === "none") {
+    alert("Please generate the report first.");
+    return;
+  }
+
+  const opt = {
+    margin: 0.5,
+    filename: 'Innova_Report.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+  };
+
+  html2pdf().from(reportContent).set(opt).save();
+};
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 </script>
 </body>
