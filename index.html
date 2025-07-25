@@ -92,7 +92,6 @@
 <input id="searchBox" type="text" placeholder="Search Center #" />
 <button id="resetViewBtn" onclick="resetMapView()">Reset View</button>
 <button id="produceReportBtn" onclick="produceReport()">📝 Produce Report</button>
-  <button id="downloadPDFBtn" onclick="downloadReportPDF()">📄 Export PDF</button>
 <div id="title">Fire and Burglary Alarm Project Map</div>
 <div id="map"></div>
 <div id="reportOutput"></div>
@@ -284,52 +283,10 @@ function getMarkerColor(status) {
 }
 
 function produceReport() {
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-  });
-
-  const reportHTML = `
-    <div style="font-family: 'Times New Roman', serif; padding: 20px;">
-      <div style="text-align: center;">
-        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIA...truncated-for-now..." style="max-height: 60px;"><br>
-        <h2>Innova IT Services</h2>
-        <p>${today} — This report presents the current installation progress of Fire and Burglary Alarm systems across the network of active sites.</p>
-      </div>
-      <h3>Status Breakdown</h3>
-      <ul>
-        <li>Fire and Burglary Transferred (FBT): <b>${counts.FBT || 0}</b></li>
-        <li>Fire Transferred (FT): <b>${counts.FT || 0}</b></li>
-        <li>Burglary Transferred (BT): <b>${counts.BT || 0}</b></li>
-        <li>Next Year (NY): <b>${counts.NY || 0}</b></li>
-        <li>Canceled (XX): <b>${counts.XX || 0}</b></li>
-        <li>In Progress (IP): <b>${counts.IP || 0}</b></li>
-      </ul>
-      <p><i>For internal use only. Confidential to Innova IT Services.</i></p>
-    </div>`;
-
   const box = document.getElementById("reportOutput");
-  box.innerHTML = reportHTML;
   box.style.display = "block";
+  box.textContent = "Generating report... (AI feature coming soon)";
 }
-const downloadReportPDF = () => {
-  const reportContent = document.getElementById("reportOutput");
-  if (!reportContent || reportContent.style.display === "none") {
-    alert("Please generate the report first.");
-    return;
-  }
-
-  const opt = {
-    margin: 0.5,
-    filename: 'Innova_Report.pdf',
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2 },
-    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-  };
-
-  html2pdf().from(reportContent).set(opt).save();
-};
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
 </script>
 </body>
 </html>
