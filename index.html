@@ -80,7 +80,6 @@
 </head>
 <body>
 
-<!-- Passcode Screen -->
 <div id="passcode-screen">
   <h2>Enter Passcode</h2>
   <input type="password" id="passcode-input" placeholder="Passcode" autocomplete="off" />
@@ -88,7 +87,6 @@
   <p id="error-message" style="color: red; display: none;">Incorrect passcode</p>
 </div>
 
-<!-- UI Controls -->
 <input id="searchBox" type="text" placeholder="Search Center #" />
 <button id="resetViewBtn" onclick="resetMapView()">Reset View</button>
 <button id="produceReportBtn" onclick="produceReport()">📝 Produce Report</button>
@@ -96,7 +94,6 @@
 <div id="map"></div>
 <div id="reportOutput"></div>
 
-<!-- Stats Panel -->
 <div id="stats">
   <strong>Completion</strong><br>
   Fully Transferred: <span id="completion-percent">0% (0 of 0)</span><br><br>
@@ -108,7 +105,6 @@
   IP: <span id="count-IP">0</span>
 </div>
 
-<!-- Legend Panel -->
 <div id="legend"></div>
 
 <script>
@@ -285,9 +281,22 @@ function getMarkerColor(status) {
 function produceReport() {
   const box = document.getElementById("reportOutput");
   box.style.display = "block";
-  box.textContent = "Generating report... (AI feature coming soon)";
+
+  const visibleMarkers = markers.filter(m => m.marker.getVisible());
+  if (visibleMarkers.length === 0) {
+    box.textContent = "No visible centers to report.";
+    return;
+  }
+
+  visibleMarkers.sort((a, b) => (a.centerNumber || "").localeCompare(b.centerNumber || ""));
+
+  const lines = visibleMarkers.map(m => {
+    const pos = m.marker.getPosition();
+    return `Center #${m.centerNumber} — ${m.status} — [${pos.lat().toFixed(5)}, ${pos.lng().toFixed(5)}]`;
+  });
+
+  box.innerHTML = `<strong>Visible Centers (${visibleMarkers.length}):</strong><br><br>` + lines.join("<br>");
 }
 </script>
 </body>
 </html>
-
