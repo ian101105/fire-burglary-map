@@ -15,13 +15,15 @@
       padding: 8px; font-size: 14px; z-index: 1000;
       width: 160px; border-radius: 4px; border: 1px solid #ccc;
     }
-    #resetViewBtn {
-      position: absolute; top: 50px; right: 20px;
+    #resetViewBtn, #produceReportBtn {
+      position: absolute;
       z-index: 1000; padding: 8px 12px; font-size: 14px;
       background-color: #fff; border: 1px solid #888;
       border-radius: 5px; cursor: pointer;
       box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
+    #resetViewBtn { top: 50px; right: 20px; }
+    #produceReportBtn { top: 140px; right: 20px; }
     #stats {
       position: absolute; top: 100px; left: 20px;
       background: white; padding: 12px; font-size: 14px;
@@ -58,6 +60,15 @@
     #passcode-screen button {
       padding: 10px 20px; font-size: 16px; cursor: pointer;
     }
+    #reportOutput {
+      position: absolute; top: 200px; right: 20px;
+      width: 300px; height: 300px;
+      background: white; border: 1px solid #ccc;
+      padding: 10px; font-size: 13px; overflow-y: auto;
+      z-index: 1000; display: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      border-radius: 5px;
+    }
   </style>
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCE4Y_LXkC_2mjBeYTJUWnxY0op3vUaCH4"></script>
 </head>
@@ -74,193 +85,18 @@
 <!-- UI Controls -->
 <input id="searchBox" type="text" placeholder="Search Center #" />
 <button id="resetViewBtn" onclick="resetMapView()">Reset View</button>
+<button id="produceReportBtn" onclick="produceReport()">📝 Produce Report</button>
 <div id="title">Fire and Burglary Alarm Project Map</div>
 <div id="map"></div>
+<div id="reportOutput"></div>
 
-<!-- Stats Panel -->
-<div id="stats">
-  <strong>Completion</strong><br>
-  Fully Transferred: <span id="completion-percent">0% (0 of 0)</span><br><br>
-  FBT: <span id="count-FBT">0</span><br>
-  FT: <span id="count-FT">0</span><br>
-  BT: <span id="count-BT">0</span><br>
-  NY: <span id="count-NY">0</span><br>
-  XX: <span id="count-XX">0</span><br>
-  IP: <span id="count-IP">0</span>
-</div>
-
-<!-- Legend Panel -->
-<div id="legend"></div>
-
+<!-- Rest of your script stays the same -->
 <script>
-let map;
-const counts = { FBT: 0, FT: 0, BT: 0, NY: 0, XX: 0, IP: 0 };
-let totalSites = 0;
-const markers = [];
-const activeFilters = new Set();
-const statuses = [
-  { code: 'FBT', color: 'green', label: 'Fire and Burglary Transferred' },
-  { code: 'FT',  color: 'orange', label: 'Fire Transferred' },
-  { code: 'BT',  color: 'blue', label: 'Burglary Transferred' },
-  { code: 'NY',  color: 'yellow', label: 'Next Year' },
-  { code: 'XX',  color: 'red', label: 'Canceled' },
-  { code: 'IP',  color: '#c084fc', label: 'In Progress' }
-];
-
-function checkPasscode() {
-  const input = document.getElementById("passcode-input").value;
-  if (input === "B3st!@#") {
-    document.getElementById("passcode-screen").style.display = "none";
-    document.getElementById("map").style.display = "block";
-    initMap();
-  } else {
-    document.getElementById("error-message").style.display = "block";
-  }
-}
-
-function resetMapView() {
-  map.setZoom(5);
-  map.panTo({ lat: 30.0, lng: -95.0 });
-}
-
-function smoothPanAndZoom(targetZoom, targetLatLng) {
-  const currentZoom = map.getZoom();
-  const zoomSteps = targetZoom - currentZoom;
-  const zoomDelay = 80;
-  for (let i = 1; i <= Math.abs(zoomSteps); i++) {
-    setTimeout(() => {
-      map.setZoom(currentZoom + Math.sign(zoomSteps) * i);
-    }, i * zoomDelay);
-  }
-  setTimeout(() => {
-    map.panTo(targetLatLng);
-  }, Math.abs(zoomSteps) * zoomDelay + 100);
-}
-
-function initMap() {
-  map = new google.maps.Map(document.getElementById("map"), {
-    zoom: 5,
-    center: { lat: 30.0, lng: -95.0 }
-  });
-
-  renderLegend();
-  loadSiteData();
-
-  document.getElementById("searchBox").addEventListener("keyup", function (e) {
-    if (e.key === "Enter") {
-      const input = this.value.trim();
-      const match = markers.find(m => m.centerNumber === input);
-      if (match) {
-        smoothPanAndZoom(15, match.marker.getPosition());
-        match.marker.setAnimation(google.maps.Animation.BOUNCE);
-        setTimeout(() => match.marker.setAnimation(null), 1400);
-        const circle = new google.maps.Circle({
-          strokeColor: '#00f', strokeOpacity: 0.8, strokeWeight: 2,
-          fillColor: '#00f', fillOpacity: 0.2, map,
-          center: match.marker.getPosition(), radius: 100
-        });
-        setTimeout(() => circle.setMap(null), 3000);
-        google.maps.event.trigger(match.marker, 'click');
-      } else {
-        alert("Center not found.");
-      }
-    }
-  });
-}
-
-function renderLegend() {
-  const legend = document.getElementById("legend");
-  statuses.forEach(({ code, color, label }) => {
-    const div = document.createElement("div");
-    div.className = "legend-item";
-    div.setAttribute("data-status", code);
-    div.onclick = () => toggleFilter(code, div);
-    div.innerHTML = `<div class='legend-color' style='background:${color}'></div> ${label}`;
-    legend.appendChild(div);
-  });
-}
-
-function toggleFilter(code, element) {
-  if (activeFilters.has(code)) {
-    activeFilters.delete(code);
-    element.classList.remove("selected");
-  } else {
-    activeFilters.add(code);
-    element.classList.add("selected");
-  }
-  updateMarkerVisibility();
-}
-
-function updateMarkerVisibility() {
-  const showAll = activeFilters.size === 0;
-  markers.forEach(({ marker, status }) => {
-    marker.setVisible(showAll || activeFilters.has(status));
-  });
-}
-
-function loadSiteData() {
-  fetch("https://gist.githubusercontent.com/ian101105/74d1cc5271aaf9b94d13a7223d8b2d7a/raw/46992744d97ddbe667dca4387829d77e5bf06a27/us-states.json")
-    .then(res => res.json())
-    .then(geojson => {
-      map.data.addGeoJson(geojson);
-      map.data.setStyle({ fillOpacity: 0, strokeColor: "#444", strokeWeight: 1 });
-    });
-
-  fetch("https://script.google.com/macros/s/AKfycbwKUWTm5A5GO56Q-AkaAQHo7Kk4cWguGW31fs91MUMgC9-e11R9dSSCsf1Ck7dnnFQP/exec")
-    .then(res => res.json())
-    .then(rows => {
-      const validRows = rows.filter(r => parseFloat(r.LATITUDE) && parseFloat(r.LONGITUDE));
-      totalSites = validRows.length;
-
-      validRows.forEach(row => {
-        const lat = +row.LATITUDE, lng = +row.LONGITUDE;
-        const centerMatch = row.Name.match(/\b\d{3}\b/);
-        const centerNumber = centerMatch ? centerMatch[0] : null;
-        if (!lat || !lng || !centerNumber) return;
-
-        const status = row.Status;
-        const marker = new google.maps.Marker({
-          position: { lat, lng }, map,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 8, fillColor: getMarkerColor(status), fillOpacity: 1,
-            strokeWeight: 1, strokeColor: "#000"
-          }
-        });
-
-        const infoWindow = new google.maps.InfoWindow({
-          content: `<b>${row.Name}</b><br>${row.ADDRESS}, ${row.STATE} ${row.ZIP}<br>Status: <b>${status}</b>`
-        });
-
-        marker.addListener("click", () => infoWindow.open(map, marker));
-
-        markers.push({ centerNumber, marker, status });
-        counts[status] = (counts[status] || 0) + 1;
-      });
-
-      updateStats();
-    });
-}
-
-function updateStats() {
-  for (const k in counts) {
-    const el = document.getElementById("count-" + k);
-    if (el) el.textContent = counts[k];
-  }
-  const percent = totalSites ? ((counts.FBT / totalSites) * 100).toFixed(1) : 0;
-  document.getElementById("completion-percent").textContent = `${percent}% (${counts.FBT} of ${totalSites})`;
-}
-
-function getMarkerColor(status) {
-  switch (status) {
-    case "FBT": return "green";
-    case "FT": return "orange";
-    case "BT": return "blue";
-    case "XX": return "red";
-    case "NY": return "yellow";
-    case "IP": return "#c084fc";
-    default: return "gray";
-  }
+// At the bottom of your script add:
+function produceReport() {
+  const reportBox = document.getElementById("reportOutput");
+  reportBox.style.display = "block";
+  reportBox.textContent = "Generating report... (AI integration coming next step)";
 }
 </script>
 </body>
