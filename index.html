@@ -15,20 +15,12 @@
       padding: 8px; font-size: 14px; z-index: 1000;
       width: 160px; border-radius: 4px; border: 1px solid #ccc;
     }
-    #resetViewBtn, #produceReportBtn {
-      position: absolute;
+    #resetViewBtn {
+      position: absolute; top: 50px; right: 20px;
       z-index: 1000; padding: 8px 12px; font-size: 14px;
       background-color: #fff; border: 1px solid #888;
       border-radius: 5px; cursor: pointer;
       box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    #resetViewBtn { top: 50px; right: 20px; }
-    #produceReportBtn {
-      top: 90px;
-      right: 20px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
     }
     #stats {
       position: absolute; top: 100px; left: 20px;
@@ -66,15 +58,6 @@
     #passcode-screen button {
       padding: 10px 20px; font-size: 16px; cursor: pointer;
     }
-    #reportOutput {
-      position: absolute; top: 140px; right: 20px;
-      width: 300px; height: 300px;
-      background: white; border: 1px solid #ccc;
-      padding: 10px; font-size: 13px; overflow-y: auto;
-      z-index: 1000; display: none;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      border-radius: 5px;
-    }
   </style>
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCE4Y_LXkC_2mjBeYTJUWnxY0op3vUaCH4"></script>
 </head>
@@ -91,10 +74,8 @@
 <!-- UI Controls -->
 <input id="searchBox" type="text" placeholder="Search Center #" />
 <button id="resetViewBtn" onclick="resetMapView()">Reset View</button>
-<button id="produceReportBtn" onclick="produceReport()">📝 Produce Report</button>
 <div id="title">Fire and Burglary Alarm Project Map</div>
 <div id="map"></div>
-<div id="reportOutput"></div>
 
 <!-- Stats Panel -->
 <div id="stats">
@@ -280,12 +261,6 @@ function getMarkerColor(status) {
     case "IP": return "#c084fc";
     default: return "gray";
   }
-}
-
-function produceReport() {
-  const box = document.getElementById("reportOutput");
-  box.style.display = "block";
-  box.textContent = "Generating report... (AI feature coming soon)";
 }
 </script>
 </body>
