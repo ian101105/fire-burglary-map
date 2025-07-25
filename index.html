@@ -75,6 +75,16 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
       border-radius: 5px;
     }
+    #closeReportBtn {
+      position: absolute;
+      top: 5px;
+      right: 8px;
+      background: transparent;
+      border: none;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
   </style>
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCE4Y_LXkC_2mjBeYTJUWnxY0op3vUaCH4"></script>
 </head>
@@ -92,7 +102,9 @@
 <button id="produceReportBtn" onclick="produceReport()">📝 Produce Report</button>
 <div id="title">Fire and Burglary Alarm Project Map</div>
 <div id="map"></div>
-<div id="reportOutput"></div>
+<div id="reportOutput">
+  <button id="closeReportBtn" onclick="document.getElementById('reportOutput').style.display='none'">&times;</button>
+</div>
 
 <div id="stats">
   <strong>Completion</strong><br>
@@ -284,18 +296,29 @@ function produceReport() {
 
   const visibleMarkers = markers.filter(m => m.marker.getVisible());
   if (visibleMarkers.length === 0) {
-    box.textContent = "No visible centers to report.";
+    box.innerHTML = '<button id="closeReportBtn" onclick="document.getElementById(\'reportOutput\').style.display=\'none\'">&times;</button>No visible centers to report.';
     return;
   }
+
+  const labelMap = {
+    FBT: 'Fire and Burglary Transferred',
+    FT: 'Fire Transferred',
+    BT: 'Burglary Transferred',
+    NY: 'Next Year',
+    XX: 'Canceled',
+    IP: 'In Progress'
+  };
 
   visibleMarkers.sort((a, b) => (a.centerNumber || "").localeCompare(b.centerNumber || ""));
 
   const lines = visibleMarkers.map(m => {
     const pos = m.marker.getPosition();
-    return `Center #${m.centerNumber} — ${m.status} — [${pos.lat().toFixed(5)}, ${pos.lng().toFixed(5)}]`;
+    const fullLabel = labelMap[m.status] || m.status;
+    return `Center #${m.centerNumber} — ${fullLabel} — [${pos.lat().toFixed(5)}, ${pos.lng().toFixed(5)}]`;
   });
 
-  box.innerHTML = `<strong>Visible Centers (${visibleMarkers.length}):</strong><br><br>` + lines.join("<br>");
+  box.innerHTML = '<button id="closeReportBtn" onclick="document.getElementById(\'reportOutput\').style.display=\'none\'">&times;</button>' +
+    `<strong>Visible Centers (${visibleMarkers.length}):</strong><br><br>` + lines.join("<br>");
 }
 </script>
 </body>
