@@ -88,6 +88,8 @@
     }
   </style>
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCE4Y_LXkC_2mjBeYTJUWnxY0op3vUaCH4"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 </head>
 <body>
 
@@ -101,6 +103,8 @@
 <input id="searchBox" type="text" placeholder="Search Center #" />
 <button id="resetViewBtn" onclick="resetMapView()">Reset View</button>
 <button id="produceReportBtn" onclick="produceReport()">📝 Produce Report</button>
+  <button onclick="downloadPdfReport()">⬇️ Download PDF</button>
+
 <div id="title">Fire and Burglary Alarm Project Map</div>
 <div id="map"></div>
 <div id="reportOutput">
@@ -322,5 +326,49 @@ function produceReport() {
     `<strong>Visible Centers (${visibleMarkers.length}):</strong><br><br>` + lines.join("<br>");
 }
 </script>
+  <script>
+function downloadPdfReport() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const visibleMarkers = markers.filter(m => m.marker.getVisible());
+  if (visibleMarkers.length === 0) {
+    alert("No visible centers to report.");
+    return;
+  }
+
+  const labelMap = {
+    FBT: 'Fire and Burglary Transferred',
+    FT: 'Fire Transferred',
+    BT: 'Burglary Transferred',
+    NY: 'Next Year',
+    XX: 'Canceled',
+    IP: 'In Progress'
+  };
+
+  const today = new Date().toLocaleDateString();
+  const logoBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAQ4CAYAAADsEGyPAAEAAElEQVR4nOzdd5xddZ3/8ff3nNvv9Joy6Y0QIJTQe29KEURQAUVURNb2U3ddd9W1rN11URcLTXoPvRfp";
+
+  doc.addImage(logoBase64, 'PNG', 65, 10, 80, 30);
+  doc.setFont("times", "normal");
+  doc.setFontSize(12);
+  doc.text(`As of ${today}, Innova IT Services formally reports the following deployment status across all monitored centers.`, 105, 50, { align: "center" });
+
+  let y = 65;
+  visibleMarkers.sort((a, b) => (a.centerNumber || "").localeCompare(b.centerNumber || ""));
+  visibleMarkers.forEach(m => {
+    const fullLabel = labelMap[m.status] || m.status;
+    doc.text(`Center #${m.centerNumber} — ${fullLabel}`, 20, y);
+    y += 8;
+    if (y > 280) {
+      doc.addPage();
+      y = 20;
+    }
+  });
+
+  doc.save("innova-status-report.pdf");
+}
+</script>
+
 </body>
 </html>
