@@ -103,7 +103,23 @@
 <input id="searchBox" type="text" placeholder="Search Center #" />
 <button id="resetViewBtn" onclick="resetMapView()">Reset View</button>
 <button id="produceReportBtn" onclick="produceReport()">📝 Produce Report</button>
-  <button onclick="downloadPdfReport()">⬇️ Download PDF</button>
+<button id="downloadPdfBtn" onclick="downloadPdfReport()" style="
+  position: absolute;
+  top: 130px;
+  right: 20px;
+  z-index: 1000;
+  padding: 8px 12px;
+  font-size: 14px;
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+">
+  ⬇️ Download PDF
+</button>
+
 
 <div id="title">Fire and Burglary Alarm Project Map</div>
 <div id="map"></div>
