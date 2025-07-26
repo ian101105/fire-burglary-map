@@ -344,7 +344,7 @@ function produceReport() {
 </script>
   <script>
 function downloadPdfReport() {
-  const { jsPDF } = window.jspdf;
+  const jsPDF = window.jspdf.jsPDF;
   const doc = new jsPDF();
 
   const visibleMarkers = markers.filter(m => m.marker.getVisible());
